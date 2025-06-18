@@ -1,31 +1,61 @@
+/*
 //require('dotenv').config({path:'./env'})
-import dotenv from "dotenv"
-
-//import mongoose from "mongoose";
-//import { DB_NAME } from "./constants";
+import dotenv from "dotenv";
 import connectDB from "./db/index.js";
-import {app} from './app.js'
+import { app } from "./app.js";
+//import { router as userRoutes } from "../routes/user.routes.js";
 
-dotenv.config({
-    path:'./env'
-})
-
-
-connectDB()
-.then(()=>{
-  app.listen(process.env.PORT || 8000, ()=>{
-    console.log(`server is runing at port :${process.env.PORT}`);
-  })
-})
-.catch((error)=>{
-  console.log("MONGO DB connection failed !!!", error)
-})
+import userRoutes from "./routes/user.routes.js"; // ✅ CORRECT
 
 
 
+// Load environment variables
+dotenv.config({ path: "./.env" });
+
+// Connect to MongoDB and start the server
+const startServer = async () => {
+    try {
+        await connectDB();
+        const PORT = process.env.PORT || 8000;
+        app.listen(PORT, () => {
+            console.log(`🚀 Server running at port ${PORT}`);
+        });
+    } catch (error) {
+        console.error("❌ MongoDB connection failed:", error.message);
+        process.exit(1); // Exit process on failure
+    }
+};
+
+startServer();
+*/
 
 
+import dotenv from "dotenv";
+import connectDB from "./db/index.js";
+import { app } from "./app.js";
+import userRoutes from "./routes/user.routes.js"; // ✅ Correct import
 
+// Load environment variables
+dotenv.config({ path: "./.env" });
+
+// Register user routes middleware
+app.use("/api/v1/users", userRoutes);
+
+// Connect to MongoDB and start the server
+const startServer = async () => {
+  try {
+    await connectDB();
+    const PORT = process.env.PORT || 8000;
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running at port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ MongoDB connection failed:", error.message);
+    process.exit(1); // Exit process on failure
+  }
+};
+
+startServer();
 
 
 /* 2nd approuch

@@ -1,25 +1,25 @@
-class ApiError extends Error{
-    constructor(
-        statusCode,
-        message="something went wrong",
-        error =[],
-        stack =""
-    ){
-    super(message)
-    this.statusCode=statusCode
-    this.data=null
-    this.message=message
+
+
+class ApiError extends Error {
+  constructor(
+    statusCode,
+    message = "Something went wrong",
+    errors = [],
+    stack = ""
+  ) {
+    super(message);
+    this.statusCode = statusCode;
+    this.data = null;
+    this.message = message;
     this.success = false;
-    this.errors=errors
+    this.errors = errors; // corrected variable name
 
-    if(statck){
-        this.stack =statck
-    }else{
-        Error.captureStackTrace(this,this.constructor)
+    if (stack) {
+      this.stack = stack; // fixed typo from statck to stack
+    } else {
+      Error.captureStackTrace(this, this.constructor);
     }
-
-    
-}
+  }
 }
 
-export {ApiError}
+export { ApiError };
