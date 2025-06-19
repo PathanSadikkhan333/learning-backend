@@ -3,112 +3,23 @@ import { asyncHandler } from "../utils/asynchandler.js";
 import { ApiError } from "../utils/apierror.js";
 import { ApiResponse } from "../utils/apiresponse.js";
 import { User } from "../models/user-model.js";
+import {uploadOnCloudinary} from "../utils/cloudinary.js"
 
-// -------------------- Register User --------------------
-const registerUser = asyncHandler(async (req, res) => {
-    const { fullname, username, email, password, avatar, coverImage } = req.body;
+const generateAccessAndRefreshTokens = async(userId)=>{
+    try{
+     const user=await User.findById(userId)
+     const accessToken=user.generateAccessToken()
+     const RefreshTokens=user.generateRefreshToken()
 
-    // Validation: all fields except coverImage are required (avatar is required too)
-    if (!fullname || !username || !email || !password ||!avatar  )
-    {
-        throw new ApiError(400, "All fields including avatar are required");
+     user.refreshToken=refreshToken
+     await user.save({validateBeforeSave:false})
+      return{accessToken,refreshToken}
+
     }
-
-    // Check if user already exists by email or username
-    const existingUser = await User.findOne({
-        $or: [{ email }, { username: username.toLowerCase() }]
-    });
-
-    if (existingUser) {
-        throw new ApiError(409, "User already exists with given email or username");
+    catch(error){
+      throw new ApiError(500,"something went wrong while generating refresh and access tokens")
     }
-
-    // Create new user
-    const user = await User.create({
-        fullname,
-        username: username.toLowerCase(),
-        email,
-        password,
-        avatar: avatar,               // expecting avatar as a URL or string here
-        coverImage: coverImage || "" // optional coverImage
-    });
-
-    return res.status(201).json(
-        new ApiResponse(201, {
-            _id: user._id,
-            fullname: user.fullname,
-            username: user.username,
-            email: user.email,
-            avatar: user.avatar,
-            coverImage: user.coverImage
-        }, "User registered successfully")
-    );
-});
-
-// -------------------- Login User --------------------
-const loginUser = asyncHandler(async (req, res) => {
-    const { emailOrUsername, password } = req.body;
-
-    if (!emailOrUsername || !password) {
-        throw new ApiError(400, "Email/Username and password are required");
-    }
-
-    // Find user by email or username
-    const user = await User.findOne({
-        $or: [
-            { email: emailOrUsername },
-            { username: emailOrUsername.toLowerCase() }
-        ]
-    });
-
-    if (!user) {
-        throw new ApiError(404, "User not found");
-    }
-
-    // Validate password
-    const isPasswordValid = await user.isPasswordCorrect(password);
-
-    if (!isPasswordValid) {
-        throw new ApiError(401, "Invalid credentials");
-    }
-
-    // Generate tokens
-    const accessToken = user.generateAccessToken();
-    const refreshToken = user.generateRefreshToken();
-
-    // Save refresh token to user document
-    user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
-
-    // Set refresh token in HTTP-only cookie
-    res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "None",
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
-
-    return res.status(200).json(
-        new ApiResponse(200, {
-            accessToken,
-            user: {
-                _id: user._id,
-                fullname: user.fullname,
-                username: user.username,
-                email: user.email,
-                avatar: user.avatar,
-                coverImage: user.coverImage
-            }
-        }, "Login successful")
-    );
-});
-
-export { registerUser, loginUser };
-*/
-import { asyncHandler } from "../utils/asynchandler.js";
-import { ApiError } from "../utils/apierror.js";
-import { ApiResponse } from "../utils/apiresponse.js";
-import { User } from "../models/user-model.js";
+}
 
 const registerUser = asyncHandler(async (req, res) => {
     const { fullname, username, email, password } = req.body;
@@ -153,7 +64,78 @@ const registerUser = asyncHandler(async (req, res) => {
     );
 });
 
-export { registerUser };
+const loginUser = asyncHandler(async(req,res)=>{
+     //take data from request body 
+     //username or email based access
+     //find the user
+     //password check
+     //generate access and refresh tokens 
+     //send cookies
+     const {email,username,password}=req.body
+
+     if(!username && !email){
+        throw new ApiError(400,"username or email is required")
+     }
+     const user=await User.findOne({
+        $or:[{username},{email}]
+     })
+
+     if(!user){
+        throw new ApiError(404,"user does not exist")
+     }
+     const isPasswordCorrect=await user.isPasswordCorrect(password)
+     
+     if(!isPasswordCorrect){
+        throw new ApiError(401,"invalid user crediantials")
+     }
+     const{accessToken,refreshToken}=await generateAccessAndRefreshTokens(user._id)
+
+    const loggedInUser= await User.findById(user._id).select("-password -refreshToken")
+
+    const options = {
+        httpOnly:true,
+        secure:true
+    }
+
+    return res
+    .status(200)
+    .cookie("accessToken",accessToken,options)
+    .cookie("refreshToken",refreshToken,options)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                user:loggedInUser,accessToken,refreshToken
+            },
+            "user logged in succesfully"
+        )
+    )
+})
+
+const LogOutUser =asyncHandler(async(req,res)=>{
+  await User.findByIdAndUpdate(
+    req.user._id,{
+        $set:{
+            refreshToken:undefined
+        }
+    },
+    {
+        new:true
+    }
+  )
+  const options = {
+    httpOnly:true,
+    secure:true
+  }
+  return res
+  .status(200)
+  .clearCookie("accessToken",options)
+  .clearCookie("refreshToken",options)
+  .json(new ApiResponse(200,{},"user logged out"))
+})
+
+export { registerUser ,loginUser,LogOutUser};
+*/
 
 
 /* classic way
@@ -162,3 +144,160 @@ export { registerUser };
    coverImagelocalpath = req.files.coverImage[0].path
    }
 */
+
+
+import { asyncHandler } from "../utils/asynchandler.js";
+import { ApiError } from "../utils/apierror.js";
+import { ApiResponse } from "../utils/apiresponse.js";
+import { User } from "../models/user-model.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
+
+const generateAccessAndRefreshTokens = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(500, "Something went wrong while generating refresh and access tokens");
+  }
+};
+
+const registerUser = asyncHandler(async (req, res) => {
+  const { fullname, username, email, password } = req.body;
+  console.log("email:", email);
+
+  const avatarFile = req.files?.avatar?.[0];
+  const coverImageFile = req.files?.coverImage?.[0];
+
+  // Validate input
+  if (!fullname || !username || !email || !password || !avatarFile) {
+    throw new ApiError(400, "All fields including avatar are required");
+  }
+
+  // Check if user already exists
+  const existingUser = await User.findOne({
+    $or: [{ email }, { username }],
+  });
+
+  if (existingUser) {
+    throw new ApiError(409, "User already exists with given email or username");
+  }
+
+  // Create user
+  const user = await User.create({
+    fullname,
+    username: username.toLowerCase(),
+    email,
+    password,
+    avatar: `/temp/${avatarFile.filename}`,
+    coverImage: coverImageFile ? `/temp/${coverImageFile.filename}` : "",
+  });
+
+  return res.status(201).json(
+    new ApiResponse(
+      201,
+      {
+        _id: user._id,
+        fullname: user.fullname,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar,
+        coverImage: user.coverImage,
+      },
+      "User registered successfully"
+    )
+  );
+});
+
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, username, password } = req.body;
+
+  if (!username && !email) {
+    throw new ApiError(400, "Username or email is required");
+  }
+
+  const user = await User.findOne({
+    $or: [{ username }, { email }],
+  });
+
+  if (!user) {
+    throw new ApiError(404, "User does not exist");
+  }
+
+  const isPasswordCorrect = await user.isPasswordCorrect(password);
+
+  if (!isPasswordCorrect) {
+    throw new ApiError(401, "Invalid user credentials");
+  }
+
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+
+  const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+
+  const options = {
+    httpOnly: true,
+    secure: true, // set to false if testing on localhost without HTTPS
+    sameSite: "strict",
+  };
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accessToken,
+          refreshToken,
+        },
+        "User logged in successfully"
+      )
+    );
+});
+
+const LogOutUser = asyncHandler(async (req, res) => {
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true, // same note as above for localhost
+    sameSite: "strict",
+  };
+
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "User logged out"));
+});
+
+export { registerUser, loginUser, LogOutUser };
+
+
+
+
+
+
+
+
+
+
+
+
