@@ -33,13 +33,13 @@ startServer();
 import dotenv from "dotenv";
 import connectDB from "./db/index.js";
 import { app } from "./app.js";
-import userRoutes from "./routes/user.routes.js"; // ✅ Correct import
+//import userRoutes from "./routes/user.routes.js"; // ✅ Correct import
 
 // Load environment variables
 dotenv.config({ path: "./.env" });
 
 // Register user routes middleware
-app.use("/api/v1/users", userRoutes);
+//    app.use("/api/v1/users", userRoutes);
 
 // Connect to MongoDB and start the server
 const startServer = async () => {
