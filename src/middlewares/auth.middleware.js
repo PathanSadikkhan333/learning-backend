@@ -1,67 +1,36 @@
-/*
-import { User } from "../models/user-model.js";
-import { ApiError } from "../utils/apierror.js";
-import { asyncHandler } from "../utils/asynchandler.js";
-import jwt from "jsonwebtoken"
 
-
-
-export const verifyJWT = asyncHandler(async(req,_,next)=>{
-  
-  
-   try{
-    const token =req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ","")
-
-    if(!token){
-        throw new ApiError(401,"Unauthorized request")
-    }
-
-    const decordedToken = jwt.verify(token,process.env.ACCESS_TOKEN_SECRET)
-
-    const user = await User.findById(decordedToken?._id).select("-password -refreshToken")
-
-    if(!user){
-        throw new ApiError(401,"Invalid Access Token")
-    }
-   
-    req.user =user;
-    next()
-}catch(error){
-   throw new ApiError(401,error?.message || "Invalid access token")
-}
-})
-*/
-
-
-import { User } from "../models/user-model.js";
-import { ApiError } from "../utils/apierror.js";
-import { asyncHandler } from "../utils/asynchandler.js";
 import jwt from "jsonwebtoken";
+import { User } from "../models/user-model.js";
+import { ApiError } from "../utils/apierror.js";
+import { asyncHandler } from "../utils/asynchandler.js";
 
-export const verifyJWT = asyncHandler(async (req, _, next) => {
+export const verifyJWT = asyncHandler(async (req, res, next) => {
   try {
-    // Try to get token from cookie or Authorization header (Bearer token)
+    // Extract token from cookie or Authorization header
     const token =
-      req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
+      req.cookies?.accessToken ||
+      req.header("Authorization")?.replace("Bearer ", "");
 
     if (!token) {
-      throw new ApiError(401, "Unauthorized request");
+      throw new ApiError(401, "Unauthorized request: Token not found");
     }
 
-    // Verify token with secret key
+    // Verify the token using secret key
     const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-    // Find user by id in decoded token, exclude sensitive fields
-    const user = await User.findById(decodedToken?._id).select("-password -refreshToken");
+    // Fetch the user by decoded _id and exclude sensitive fields
+    const user = await User.findById(decodedToken._id).select(
+      "-password -refreshToken"
+    );
 
     if (!user) {
-      throw new ApiError(401, "Invalid Access Token");
+      throw new ApiError(401, "Unauthorized request: User not found");
     }
 
-    // Attach user object to request for downstream handlers
+    // Attach user object to request
     req.user = user;
     next();
   } catch (error) {
-    throw new ApiError(401, error?.message || "Invalid access token");
+    throw new ApiError(401, error?.message || "Unauthorized request");
   }
 });
