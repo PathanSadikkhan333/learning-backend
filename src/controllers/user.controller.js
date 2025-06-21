@@ -6,6 +6,8 @@ import { User } from "../models/user-model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 import { validateHeaderName } from "http";
+
+
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
     const user = await User.findById(userId);
@@ -94,46 +96,46 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!user) {
     throw new ApiError(404, "User does not exist")
   }
-
   const isPasswordCorrect = await user.isPasswordCorrect(password);
 
-  if (!isPasswordCorrect) {
-    throw new ApiError(401, "Invalid user credentials")
-  }
+if (!isPasswordCorrect) {
+  throw new ApiError(401, "Invalid user credentials")
+}
 
-  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
 
-  const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
 
-  const options = {
-    httpOnly: true,
-    secure: true, // set to false if testing on localhost without HTTPS
-    sameSite: "strict",
-  };
+const options = {
+  httpOnly: true,
+  secure: true, // set to false if testing on localhost without HTTPS
+  sameSite: "strict",
+};
 
-  return res
-    .status(200)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
-    .json(
-      new ApiResponse(
-        200,
-        {
-          user: loggedInUser,
-          accessToken,
-          refreshToken,
-        },
-        "User logged in successfully"
-      )
-    );
+return res
+  .status(200)
+  .cookie("accessToken", accessToken, options)
+  .cookie("refreshToken", refreshToken, options)
+  .json(
+    new ApiResponse(
+      200,
+      {
+        user: loggedInUser,
+        accessToken,
+        refreshToken,
+      },
+      "User logged in successfully"
+    )
+  );
 });
+
 
 const LogOutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshToken: undefined,
+      $unset: {
+        refreshToken: 1,
       },
     },
     {
@@ -152,7 +154,7 @@ const LogOutUser = asyncHandler(async (req, res) => {
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
     .json(new ApiResponse(200, {}, "User logged out"));
-});
+})
 
 const incomingrefreshToken = asyncHandler(async(req,res)=>{
   req.cookies.refreshToken || req.body.refreshToken
@@ -426,12 +428,13 @@ export {
      registerUser,
      loginUser, 
      LogOutUser,
-     refreshAccessToken,
+     generateAccessAndRefreshTokens,
      changeCurrentPassword,
      getCurrentUser,
      updateAccountDetails,
      updateUserAvatar,
      updateUserCoverImage,
+      getWatchHistory,
      getUserChannelProfile
  };
 

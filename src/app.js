@@ -28,12 +28,15 @@ app.use("/api/v1/users",userRouter)
 //http://localhost:8000/api/v1/user/register
 export { app }
 */
+
 import express from "express";
 import cors from "cors";
-import cookieParser from "cookie-parser"; // Capital P here (common convention)
+import cookieParser from "cookie-parser";
+import userRouter from "./routes/user.routes.js";
 
 const app = express();
 
+// ✅ 1. CORS middleware
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN,
@@ -41,21 +44,18 @@ app.use(
   })
 );
 
-// Limit request body size to 16kb (optional, good for security)
-app.use(express.json({ limit: "16kb" }));
+// ✅ 2. Body parsers (important!)
+app.use(express.json()); // <-- PLACE THIS HERE (Line 12)
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 
-// Serve static files from the public folder
+// ✅ 3. Static files
 app.use(express.static("public"));
 
-// Use cookie parser middleware
+// ✅ 4. Cookie parser
 app.use(cookieParser());
 
-// Routes import
- import userRouter from "./routes/user.routes.js";
-
-// Routes declaration
+// ✅ 5. Routes
 app.use("/api/v1/users", userRouter);
 
-// Export app
+// ✅ Export app
 export { app };

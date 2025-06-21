@@ -1,10 +1,10 @@
 
 import { Router } from "express";
 import express from "express";
-export { registerUser, loginUser, LogOutUser,refreshAccessToken };
+export { registerUser, loginUser, LogOutUser,generateAccessAndRefreshTokens };
 import {changeCurrentPassword,
         getCurrentUser,
-        refreshAccessToken,
+        generateAccessAndRefreshTokens,
         getUserChannelProfile,
         loginUser, 
         LogOutUser,
@@ -36,7 +36,7 @@ router.route("/login").post(loginUser)
 //secured routes
 router.route("/logout").post(verifyJWT, LogOutUser)
 
-router.route("/refresh-token").post(refreshAccessToken)
+router.route("/refresh-token").post(generateAccessAndRefreshTokens)
 
 router.route("/change-password").post(verifyJWT,changeCurrentPassword)
 
